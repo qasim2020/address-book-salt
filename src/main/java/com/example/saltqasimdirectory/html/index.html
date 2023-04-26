@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;700;900&display=swap" rel="stylesheet">
+  <title>Address Book | </salt></title>
+  <style>
+
+    body {
+      font-family: "Roboto";
+      font-size: 15px;
+    }
+
+    nav {
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;;
+      font-width: bold;
+    }
+
+    .container,
+    nav {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    button {
+      padding: 7px 10px;
+      border: 2px solid black;
+      font-family: "Roboto";
+      font-size: 15px;
+      font-weight: bold;
+      background: black;
+      color: white;
+    }
+
+    table {
+      margin-top: 25px;
+      border-collapse: collapse;
+      overflow: scroll;
+      display: block;
+    }
+
+    th {
+      background: whitesmoke;
+    }
+
+    th,
+    td {
+      border: 2px solid black;
+      padding: 10px;
+      white-space: nowrap;
+    }
+
+    [label-id] {
+      font-size: 12px;
+      color: darkgray;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: start;
+      justify-content: flex-start;
+    }
+
+    form > label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    form > input {
+      font-size: 15px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      background: whitesmoke;
+      border: 2px solid black;
+      margin-bottom: 10px;
+    }
+
+    form > button {
+      margin-bottom: 10px;
+    }
+
+    .d-none {
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+<nav>
+  <div class="left">
+    <p>Address Book</p>
+  </div>
+  <div class="right">
+    <button data-status></button>
+  </div>
+</nav>
+<div class="container layer-table">
+
+  <div>
+    <button data-new-address onclick="myFuncs.openNewForm()">Add new address</button>
+    <button data-fetch-again onclick="myFuncs.fetchData()">Fetch again</button>
+  </div>
+
+  <table>
+    <tbody>
+    <tr>
+      <th></th>
+      <th></th>
+      <th class="d-none">Id</th>
+      <th>Name</th>
+      <th>Address</th>
+    </tr>
+    </tbody>
+  </table>
+
+</div>
+
+<div class="d-none container layer-form">
+  <form>
+    <label for="id">ID</label>
+    <input id="id" type="text" name="id" required>
+
+    <label for="Name">Name</label>
+    <input id="name" type="text" name="name" required>
+
+    <label for="address">Address</label>
+    <input id="address" type="text" name="address" required>
+
+    <button type="submit">Submit</button>
+    <button type="button" onclick="myFuncs.toggleLayer('.layer-table', '.layer-form')">Cancel</button>
+  </form>
+</div>
+
+<script>
+  let myFuncs = {
+    toggleLayer: function(layer1, layer2) {
+      console.log(layer1, layer2);
+      console.log( document.querySelector(layer1) );
+      document.querySelector(layer1).classList.remove("d-none");
+      document.querySelector(layer2).classList.add("d-none");
+    },
+    addNewAddress: async function(event) {
+
+      event.preventDefault();
+      document.querySelector("form > button").innerHTML = "Saving...";
+
+      const data = {
+        id: document.querySelector("#id").value,
+        name: document.querySelector("#name").value,
+        address: document.querySelector("#address").value
+      };
+
+      const emptyFields = Object.values(data).every( v => {
+        v == ""
+      });
+
+      if (emptyFields) {
+        document.querySelector("form > button").innerHTML = "Please fill all fields.";
+        return;
+      }
+
+      let formAction = document.querySelector("form").getAttribute("action"),
+              response;
+
+      console.log(formAction);
+
+      if (formAction == "post") {
+
+        response = await fetch('http://localhost:8080/createOne', {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+      } else if (formAction == "put") {
+
+        response = await fetch(`http://localhost:8080/updateOne/${data.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+      }
+
+      if (response.status == "201") {
+        document.querySelector("form > button").innerHTML = "Done!";
+        window.location.reload();
+      } else {
+        console.log(response);
+        document.querySelector("form > button").innerHTML = "Error!";
+      }
+    },
+    openNewForm: async function() {
+      const response = await fetch('http://localhost:8080/getNewId');
+      const data = await response.text();
+      document.querySelector("form").setAttribute('action', 'post');
+      document.querySelector("[name='id']").setAttribute('value', data);
+      myFuncs.toggleLayer(".layer-form", ".layer-table");
+    },
+    editAddress: function(elem) {
+      const data = {
+        id: elem.closest("tr").querySelector("[label-id]").innerHTML,
+        name: elem.closest("tr").querySelector("[label-name]").innerHTML,
+        address: elem.closest("tr").querySelector("[label-address]").innerHTML
+      };
+      document.querySelector("form").setAttribute('action', 'put');
+      document.querySelector("[name='id']").setAttribute('value', data.id);
+      document.querySelector("[name='id']").setAttribute('disabled', true);
+      document.querySelector("[name='name']").setAttribute('value', data.name);
+      document.querySelector("[name='address']").setAttribute('value', data.address);
+      myFuncs.toggleLayer(".layer-form", ".layer-table");
+    },
+    deleteAddress: async function(elem) {
+      document.querySelector("[data-status]").classList.remove("d-none");
+      let id = elem.closest("tr").querySelector("[label-id]").innerHTML;
+      document.querySelector("[data-status]").innerHTML = "Deleting...";
+      const response = await fetch(`http://localhost:8080/deleteOne/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+      console.log(response);
+      if (response.ok) {
+        document.querySelector("[data-status]").innerHTML = "Record deleted!";
+        elem.closest("tr").remove();
+      } else {
+        console.log(response);
+        document.querySelector("[data-status]").innerHTML = "Error!";
+      }
+    },
+    fetchData: async function () {
+      console.log("fetch data");
+      document.querySelector("[data-status]").classList.remove("d-none");
+      document.querySelector("[data-status]").innerHTML = "Fetching...";
+      const rowsExist = document.querySelector("tbody tr:not(:first-child)");
+      if (rowsExist) {
+        document.querySelectorAll("tbody tr:not(:first-child)").forEach( v => {
+          v.remove();
+        });
+      }
+      const response = await fetch('http://localhost:8080/findAll');
+      const data = await response.json();
+      console.log(data);
+      document.querySelector("[data-status]").classList.add("d-none");
+      if (data.length > 0) {
+        const html = data.reduce( (total, val, key) => {
+          return total += `
+                            <tr>
+                                <td onclick="myFuncs.editAddress(this)"><button>Edit</button></td>
+                                <td onclick="myFuncs.deleteAddress(this)"><button>Delete</button></td>
+                                <td label-id class="d-none">${val.id}</td>
+                                <td label-name>${val.name}</td>
+                                <td label-address>${val.address}</td>
+                            </tr>
+                        `;
+        }, "");
+        document.querySelector("tbody").insertAdjacentHTML('beforeend', html);
+        document.querySelector("[data-status]").classList.add("d-none");
+      } else {
+        console.log("No data found!");
+        document.querySelector("[data-status]").innerHTML = "No data found!";
+      }
+    }
+  }
+
+
+  // events
+  document.addEventListener('DOMContentLoaded', myFuncs.fetchData);
+  document.addEventListener("submit", (event) => {
+    if (event.target.closest("form")) {
+      myFuncs.addNewAddress(event);
+    }
+  });
+
+</script>
+</body>
+</html>
+
